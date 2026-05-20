@@ -12,6 +12,7 @@ import ImageResize from "./pages/ImageResize";
 import ImageUpscale from "./pages/ImageUpscale";
 import ImageDpi from "./pages/ImageDpi";
 import ImageMetadata from "./pages/ImageMetadata";
+import ImageBase64 from "./pages/ImageBase64";
 
 function App() {
   return (
@@ -31,6 +32,7 @@ function App() {
         <Route path="/image-upscale" element={<ImageUpscale />} />
         <Route path="/image-dpi" element={<ImageDpi />} />
         <Route path="/image-metadata" element={<ImageMetadata />} />
+        <Route path="/image-to-base64" element={<ImageBase64 />} />
       </Route>
     </Routes>
   );
