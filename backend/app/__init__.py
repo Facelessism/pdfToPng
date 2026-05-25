@@ -51,6 +51,7 @@ def create_app():
     
     from blueprints.pdf import pdf_bp
     from blueprints.pdf_to_docx import pdf_docx_bp
+    from blueprints.docx_to_pdf import docx_pdf_bp
     from blueprints.image import image_bp
     from blueprints.removebg import remove_bp
     from blueprints.rotate_flip import rotate_flip_bp
@@ -58,6 +59,7 @@ def create_app():
     from blueprints.metadata_viewer import metadata_bp
     app.register_blueprint(pdf_bp)
     app.register_blueprint(pdf_docx_bp)
+    app.register_blueprint(docx_pdf_bp)
     app.register_blueprint(image_bp)
     app.register_blueprint(remove_bp)
     app.register_blueprint(rotate_flip_bp)

@@ -161,6 +161,15 @@ const tools = [
     gradient: "from-emerald-500/10 to-blue-500/10",
     iconGradient: "from-emerald-500 to-blue-500",
   },
+  {
+    id: "docx-to-pdf",
+    name: "DOCX to PDF",
+    icon: <FileText />,
+    description: "Convert .docx files to PDF using the server",
+    path: "/docx-to-pdf",
+    gradient: "from-sky-500/10 to-indigo-500/10",
+    iconGradient: "from-sky-500 to-indigo-500",
+  },
 ];
 
 export default tools;
