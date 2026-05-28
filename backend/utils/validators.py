@@ -28,7 +28,8 @@ def validate_file_extension(
     allowed_extensions,
     message,
 ):
-    extension = "." + filename.rsplit(".", 1)[-1].lower()
+    parts = filename.rsplit(".", 1)
+    extension = f".{parts[1].lower()}" if len(parts) == 2 else ""
 
     if extension not in allowed_extensions:
         return error(message, 400)
