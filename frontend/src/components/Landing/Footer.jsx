@@ -9,18 +9,12 @@ import {
   Twitter,
   Heart,
   Shield,
-  Zap,
   Globe,
-  ArrowUp,
   Facebook,
   Instagram
 } from "lucide-react";
 
 const Footer = () => {
-  const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
   const currentYear = new Date().getFullYear();
 
   return (
@@ -32,7 +26,7 @@ const Footer = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-16">
         
         {/* Main Footer Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 lg:gap-12">
           
           {/* Brand Section */}
           <div className="space-y-4">
@@ -65,7 +59,7 @@ const Footer = () => {
                  className="p-2 bg-slate-100 hover:bg-purple-100 rounded-lg transition-all duration-300 group">
                 <Mail className="w-4 h-4 text-slate-600 group-hover:text-purple-600" />
               </a>
-              <a href="https://twitter.com" 
+              <a href={import.meta.env.VITE_TWITTER_URL} 
                  target="_blank" 
                  rel="noopener noreferrer"
                  className="p-2 bg-slate-100 hover:bg-purple-100 rounded-lg transition-all duration-300 group">
@@ -96,45 +90,6 @@ const Footer = () => {
                     <span className="w-0 group-hover:w-1 h-1 bg-purple-600 rounded-full transition-all duration-300"></span>
                     {item.name}
                   </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Resources */}
-          <div>
-            <h3 className="font-semibold text-slate-900 mb-4 text-lg relative inline-block">
-              Resources
-              <div className="absolute -bottom-1 left-0 w-8 h-0.5 bg-purple-600 rounded-full"></div>
-            </h3>
-            <ul className="space-y-3">
-              {[
-                { name: "API Documentation", path: "/api-docs", icon: Zap },
-                { name: "Support Center", path: "/support", icon: null },
-                { name: "Report a Bug", path: "https://github.com/Durgeshwar-AI/pdfToPng/issues", external: true },
-                { name: "Feature Request", path: "https://github.com/Durgeshwar-AI/pdfToPng/issues", external: true },
-                { name: "Changelog", path: "/changelog", icon: null },
-              ].map((item) => (
-                <li key={item.name}>
-                  {item.external ? (
-                    <a 
-                      href={item.path}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-slate-500 hover:text-purple-600 transition-all duration-300 text-sm flex items-center gap-2 group"
-                    >
-                      <span className="w-0 group-hover:w-1 h-1 bg-purple-600 rounded-full transition-all duration-300"></span>
-                      {item.name}
-                    </a>
-                  ) : (
-                    <Link 
-                      to={item.path}
-                      className="text-slate-500 hover:text-purple-600 transition-all duration-300 text-sm flex items-center gap-2 group"
-                    >
-                      <span className="w-0 group-hover:w-1 h-1 bg-purple-600 rounded-full transition-all duration-300"></span>
-                      {item.name}
-                    </Link>
-                  )}
                 </li>
               ))}
             </ul>
@@ -213,15 +168,6 @@ const Footer = () => {
                 for the dev community
               </span>
             </div>
-
-            {/* Back to Top Button */}
-            <button 
-              onClick={scrollToTop}
-              className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-purple-100 rounded-lg transition-all duration-300 text-sm text-slate-600 hover:text-purple-600 group"
-            >
-              <ArrowUp className="w-4 h-4 group-hover:-translate-y-0.5 transition-transform" />
-              Back to Top
-            </button>
           </div>
         </div>
 
