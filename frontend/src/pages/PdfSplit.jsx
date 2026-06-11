@@ -74,6 +74,12 @@ function PdfSplit() {
       return;
     }
 
+    const MAX_FILE_SIZE_MB = 10;
+    if (f.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
+      toast.error(`File size exceeds the ${MAX_FILE_SIZE_MB} MB limit.`);
+      return;
+    }
+
     setFile(f);
     setResultUrl(null);
     setError(null);
