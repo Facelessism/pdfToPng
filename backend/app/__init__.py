@@ -47,7 +47,7 @@ def create_app():
     def _health():
         return {"status": "ok"}, 200
     
-    app.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024
+    app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024
     
     from blueprints.pdf import pdf_bp
     from blueprints.pdf_to_docx import pdf_docx_bp
