@@ -1,14 +1,3 @@
-import io
-from flask import Blueprint, request, send_file
-from PIL import Image
-from utils.decorators import process_image_request
-
-rotate_flip_bp = Blueprint("rotate_flip", __name__)
-
-ALLOWED_ACTIONS = {"rotate_left", "rotate_right", "flip_h", "flip_v"}
-ALLOWED_FORMATS = {"PNG", "JPEG", "WEBP"}
-
-
 @rotate_flip_bp.route("/rotateFlip", methods=["POST"])
 @process_image_request
 def rotate_flip(img, filename, file_bytes):
@@ -58,17 +47,17 @@ def rotate_flip(img, filename, file_bytes):
         return send_file(output, mimetype=mime,
                          download_name=f"transformed.{ext}")
     
-  finally:
-    # Clean up buffer
-    if output:
-        try:
-            output.close()
-        except Exception:
-            pass
-    
-    # Clean up image copy
-    if img_copy:
-        try:
-            img_copy.close()
-        except Exception:
-            pass
+    finally:
+        # Clean up buffer
+        if output:
+            try:
+                output.close()
+            except Exception:
+                pass
+        
+        # Clean up image copy
+        if img_copy:
+            try:
+                img_copy.close()
+            except Exception:
+                pass
