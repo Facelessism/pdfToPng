@@ -112,6 +112,8 @@ const pdf = await pdfjsLib.getDocument({
     setPageRange("");
     setSinglePage("1");
     setPageMode("all");
+    setCropEnabled(false);
+    setPreviewImage(null);
   };
 
   const handleCustomSubmit = async ({ file, setStatusMessage, setLoading, setStatusType }) => {
@@ -190,6 +192,9 @@ if (cropEnabled) {
   croppedCanvas.height = sh;
 
   const croppedCtx = croppedCanvas.getContext("2d");
+  if(!croppedCtx){
+    throw new Error ("Failed to get canvas context");
+  }
 
   croppedCtx.drawImage(
     canvas,
