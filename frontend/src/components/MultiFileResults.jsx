@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
-import { Download, Copy, Check } from "lucide-react";
+
+import { Download, Copy, Check, AlertCircle } from "lucide-react";
 
 export default function MultiFileResults({ files }) {
   const [previewUrls, setPreviewUrls] = useState([]);
   const [copiedIndex, setCopiedIndex] = useState(null);
+  const [copyErrorIndex, setCopyErrorIndex] = useState(null);
 
   useEffect(() => {
     const urls = files.map((f) =>
@@ -18,18 +20,25 @@ export default function MultiFileResults({ files }) {
   }, [files]);
 
   const handleCopy = async (blob, index) => {
-    try {
-      await navigator.clipboard.write([
-        new window.ClipboardItem({
-          [blob.type]: blob,
-        }),
-      ]);
-      setCopiedIndex(index);
-      setTimeout(() => setCopiedIndex(null), 2000);
-    } catch (err) {
-      console.error("Failed to copy image:", err);
-    }
-  };
+  try {
+    setCopyErrorIndex(null);
+
+    await navigator.clipboard.write([
+      new window.ClipboardItem({
+        [blob.type]: blob,
+      }),
+    ]);
+
+    setCopiedIndex(index);
+    setTimeout(() => setCopiedIndex(null), 2000);
+  } catch (err) {
+    console.error("Failed to copy image:", err);
+    setCopyErrorIndex(index);
+    setCopiedIndex(null);
+
+    setTimeout(() => setCopyErrorIndex(null), 3000);
+  }
+};
 
   const downloadBlob = (blob, filename) => {
     const url = URL.createObjectURL(blob);
@@ -107,7 +116,14 @@ export default function MultiFileResults({ files }) {
                     </>
                   )}
                 </button>
+                
               </div>
+              {copyErrorIndex === index && (
+  <p className="mt-2 flex items-center gap-1 text-[11px] text-red-600">
+    <AlertCircle size={12} />
+    Unable to copy image. Please download it instead.
+  </p>
+)}
             </div>
           </div>
         ))}
