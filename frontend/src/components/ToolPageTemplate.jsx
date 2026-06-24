@@ -1,3 +1,4 @@
+import { useHistory } from "../context/HistoryContext";
 import React, { useState, useCallback, lazy, Suspense } from "react";
 import { useFileUpload } from "../hooks/useFileUpload";
 import {
@@ -39,7 +40,7 @@ const ToolPageTemplate = ({
   // statusMessage is kept ONLY for inline progress text (e.g. "Rendering page 3/10…")
   // Final success/error/warning messages go through toasts.
   const [inlineProgress, setInlineProgress] = useState("");
-
+const { addToHistory } = useHistory();
   const internalValidate = useCallback(
     async (selectedFile) => {
       if (validateFile) {
@@ -143,7 +144,13 @@ const ToolPageTemplate = ({
         a.click();
         document.body.removeChild(a);
         window.URL.revokeObjectURL(url);
-
+const historyUrl = window.URL.createObjectURL(blob);
+addToHistory({
+  fileName: file.name,
+  conversionType: title,
+  downloadUrl: historyUrl,
+  downloadName: downloadName,
+});
         // Call onSuccess callback if provided
         let successMsg = onSuccessMessage || "Success! File downloaded.";
         if (onSuccess) {
