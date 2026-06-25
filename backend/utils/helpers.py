@@ -11,6 +11,10 @@ def safe_gc_collect():
 def error(message, status_code=400):
     return jsonify({"success": False, "message": message}), status_code
 
+def success(data=None, message="Success", status_code=200):
+    return jsonify({"success": True, "message": message, "data": data}), status_code
+
+
 def send_file_and_cleanup(filename, **kwargs):
     """
     Sends a file and deletes it after the request is completed.

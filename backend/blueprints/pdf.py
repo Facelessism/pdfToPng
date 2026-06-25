@@ -1,7 +1,7 @@
 from flask import Blueprint, request
 import base64
 import fitz
-from utils.helpers import error, send_file_and_cleanup
+from utils.helpers import error, send_file_and_cleanup, success
 from utils.validators import validate_uploaded_file, validate_pdf_file
 
 pdf_bp = Blueprint("pdf", __name__)
@@ -74,11 +74,14 @@ def convert_pdf_to_png():
             # Force garbage collection
             import gc
             gc.collect()
-            return {
-                "success": True,
-                "message": "Image encoded successfully.",
-                "image_data": f"data:image/png;base64,{base64_string}"
-            }
+            return success(
+		{
+		    "image_data": (
+                	f"data:image/png;base64,{base64_string}"
+            	    )
+        	},
+        	"Image encoded successfully.",
+    	    )
 
         response = send_file_and_cleanup(
             png_bytes,
