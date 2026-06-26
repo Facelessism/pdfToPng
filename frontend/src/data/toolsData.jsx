@@ -341,6 +341,16 @@ const tools = [
     iconGradient: "from-slate-500 to-slate-700",
   },
   {
+    id: "md-to-docx",
+    name: "Markdown to DOCX",
+    category: "Conversion Tools",
+    icon: <FileText />,
+    description: "Convert Markdown files to Word (.docx) documents with proper formatting.",
+    path: "/md-to-docx",
+    gradient: "from-indigo-500/10 to-blue-500/10",
+    iconGradient: "from-indigo-500 to-blue-500",
+  },
+  {
     id: "pdf-to-text",
     name: "PDF to Text",
     category: "Conversion Tools",
