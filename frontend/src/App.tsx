@@ -29,11 +29,13 @@ const DocxPdf = lazy(() => import("./pages/DocxPdf"));
 const PdfSplit = lazy(() => import("./pages/PdfSplit"));
 const PdfRotateFlip = lazy(() => import("./pages/PdfRotateFlip"));
 const PdfReorder = lazy(() => import("./pages/PdfReorder"));
+const PdfPngBatch = lazy(() => import("./pages/PdfPngBatch"));
 const PDFWatermark = lazy(() => import("./pages/PDFWatermark"));
 const ImageOCR = lazy(() => import("./pages/ImageOCR"));
 const ImageWatermark = lazy(() => import("./pages/ImageWatermark"));
-const BlurImage = lazy(() => import("./pages/BlurImage"));
-const MdToHtml = lazy(() => import("./pages/MdToHtml"));
+const BlurImage = lazy(()=> import("./pages/BlurImage"))
+const MdToHtml = lazy(()=> import("./pages/MdToHtml"))
+const MdToDocx = lazy(() => import("./pages/MdToDocx"))
 const PdfProtect = lazy(() => import("./pages/PdfProtect"));
 const PdfCompress = lazy(() => import("./pages/PdfCompress"));
 const PdfUnlock = lazy(() => import("./pages/PdfUnlock"));
@@ -73,6 +75,7 @@ function App() {
             <Route path="/pdf-split" element={<PdfSplit />} />
             <Route path="/pdf-rotate-flip" element={<PdfRotateFlip />} />
             <Route path="/pdf-reorder" element={<PdfReorder />} />
+            <Route path="/pdf-to-png-batch" element={<PdfPngBatch />} />
             <Route path="/pdf-sign" element={<PdfSign />} />
             <Route path="/pdf-watermark" element={<PDFWatermark />} />
             <Route path="/pdf-protect" element={<PdfProtect />} />
@@ -99,6 +102,7 @@ function App() {
             <Route path="/image-metadata" element={<ImageMetadata />} />
             <Route path="/image-to-base64" element={<ImageBase64 />} />
             <Route path="/md-to-html" element={<MdToHtml />} />
+            <Route path="/md-to-docx" element={<MdToDocx />} />
             <Route path="/url-to-qr" element={<UrlToQr />} />
             <Route path="/csv-to-json" element={<CsvToJson />} />
             <Route path="/history" element={<History />} />

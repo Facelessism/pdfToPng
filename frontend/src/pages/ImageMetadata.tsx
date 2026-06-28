@@ -3,6 +3,65 @@ import ToolPageTemplate from "../components/ToolPageTemplate";
 import { Info, Copy, Check, Download } from "lucide-react";
 import { toastSuccess, toastError, toastInfo, toastLoading, toastDismiss } from "../utils/toast";
 
+function stripJpegMetadataLossless(arrayBuffer) {
+  const data = new Uint8Array(arrayBuffer);
+  if (data[0] !== 0xff || data[1] !== 0xd8) {
+    throw new Error("Invalid JPEG file format.");
+  }
+  const chunks = [];
+  chunks.push(data.subarray(0, 2));
+  let i = 2;
+  const len = data.length;
+  while (i < len) {
+    if (data[i] === 0xff) {
+      const marker = data[i + 1];
+      if (marker === 0xd9) { chunks.push(data.subarray(i, len)); break; }
+      if ((marker >= 0xd0 && marker <= 0xd7) || marker === 0x01) {
+        chunks.push(data.subarray(i, i + 2)); i += 2; continue;
+      }
+      if (i + 3 >= len) { chunks.push(data.subarray(i, len)); break; }
+      const chunkLen = (data[i + 2] << 8) + data[i + 3];
+      const nextIndex = i + 2 + chunkLen;
+      if (nextIndex > len) { chunks.push(data.subarray(i, len)); break; }
+      if (marker !== 0xe1) chunks.push(data.subarray(i, nextIndex));
+      i = nextIndex;
+    } else {
+      chunks.push(data.subarray(i, len)); break;
+    }
+  }
+  let totalLength = 0;
+  for (const chunk of chunks) totalLength += chunk.length;
+  const result = new Uint8Array(totalLength);
+  let offset = 0;
+  for (const chunk of chunks) { result.set(chunk, offset); offset += chunk.length; }
+  return result.buffer;
+}
+
+function stripMetadataViaCanvas(file, mimeType, quality) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) { reject(new Error("Failed to get 2D canvas context.")); return; }
+        ctx.drawImage(img, 0, 0);
+        canvas.toBlob((blob) => {
+          if (blob) resolve(blob);
+          else reject(new Error("Canvas conversion failed."));
+        }, mimeType, quality / 100);
+      };
+      img.onerror = () => reject(new Error("Failed to load image preview."));
+      img.src = e.target.result;
+    };
+    reader.onerror = () => reject(new Error("Failed to read image file."));
+    reader.readAsDataURL(file);
+  });
+}
+
 export default function ImageMetadata() {
   const [metadata, setMetadata] = useState(null);
   const [securityReport, setSecurityReport] = useState(null);
@@ -12,15 +71,10 @@ export default function ImageMetadata() {
     if (selectedFile && selectedFile.type.startsWith("image/")) {
       return {
         isValid: true,
-        message: `File "${selectedFile.name}" selected (${(
-          selectedFile.size / 1024
-        ).toFixed(1)} KB)`,
+        message: `File "${selectedFile.name}" selected (${(selectedFile.size / 1024).toFixed(1)} KB)`,
       };
     }
-    return {
-      isValid: false,
-      message: "Error: Please select an image file (PNG, JPG, JPEG, WEBP, etc.)",
-    };
+    return { isValid: false, message: "Error: Please select an image file (PNG, JPG, JPEG, WEBP, etc.)" };
   }, []);
 
   const handleClear = () => {
@@ -31,29 +85,20 @@ export default function ImageMetadata() {
 
   const handleViewMetadata = async ({ formData, setLoading, addToHistory, file }) => {
     setMetadata(null);
-    const loadingId = toastLoading("Reading image metadata…");
+    const loadingId = toastLoading("Reading image metadata...");
     try {
       const response = await fetch(`${import.meta.env.VITE_API_URL}/view-metadata`, {
         method: "POST",
         body: formData,
       });
       const data = await response.json();
-      if (!response.ok) {
-        toastDismiss(loadingId);
-        toastError(data.error || "Failed to read metadata.");
-        return;
-      }
-      if (data.message) {
-        toastDismiss(loadingId);
-        toastInfo(data.message);
-        return;
-      }
+      if (!response.ok) { toastDismiss(loadingId); toastError(data.error || "Failed to read metadata."); return; }
+      if (data.message) { toastDismiss(loadingId); toastInfo(data.message); return; }
       setMetadata(data.metadata);
       setSecurityReport(data.security_report);
       toastDismiss(loadingId);
       toastSuccess("Metadata loaded successfully!");
 
-      // Add metadata JSON to history as a downloadable .txt
       if (addToHistory && file) {
         const metaText = JSON.stringify(data.metadata, null, 2);
         const blob = new Blob([metaText], { type: "text/plain" });
@@ -71,93 +116,74 @@ export default function ImageMetadata() {
   const handleStripMetadata = async (file, setLoading, addToHistory) => {
     if (!file) return;
     setLoading(true);
-
-    const formData = new FormData();
-    formData.append("image", file);
-    const loadingId = toastLoading("Stripping metadata…");
-
+    const loadingId = toastLoading("Stripping metadata...");
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/strip-metadata`, {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || "Failed to strip metadata");
+      let finalBlob;
+      const fileMime = file.type || "image/jpeg";
+      if (fileMime === "image/jpeg" || fileMime === "image/jpg") {
+        const arrayBuffer = await file.arrayBuffer();
+        const strippedBuffer = stripJpegMetadataLossless(arrayBuffer);
+        finalBlob = new Blob([strippedBuffer], { type: fileMime });
+      } else {
+        finalBlob = await stripMetadataViaCanvas(file, fileMime, 95);
       }
-
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
+      const url = URL.createObjectURL(finalBlob);
       const a = document.createElement("a");
       a.href = url;
-
-      const extension = file.name.includes(".")
-        ? file.name.slice(file.name.lastIndexOf("."))
-        : ".png";
-      const baseName = file.name.includes(".")
-        ? file.name.replace(/\.[^.]+$/, "")
-        : file.name;
-      a.download = `${baseName}_stripped${extension}`;
-
+      const extension = file.name.includes(".") ? file.name.slice(file.name.lastIndexOf(".")) : ".png";
+      const baseName = file.name.includes(".") ? file.name.replace(/\.[^.]+$/, "") : file.name;
+      const downloadName = `${baseName}_stripped${extension}`;
+      a.download = downloadName;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-
       toastDismiss(loadingId);
       toastSuccess("Metadata stripped and image downloaded!");
 
       if (addToHistory) {
-        const historyUrl = URL.createObjectURL(blob);
-        addToHistory(historyUrl, `${baseName}_stripped${extension}`);
+        const historyUrl = URL.createObjectURL(finalBlob);
+        addToHistory(historyUrl, downloadName);
       }
+      URL.revokeObjectURL(url);
     } catch (err) {
       toastDismiss(loadingId);
       toastError(err.message || "Failed to strip metadata.");
     } finally {
-      URL.revokeObjectURL(url);
       setLoading(false);
     }
   };
 
   const handleCleanAndDownload = async (file, setLoading, addToHistory) => {
     if (!file) return;
-
     setLoading(true);
-    const loadingId = toastLoading("Privacy-cleaning image…");
-
-    const formData = new FormData();
-    formData.append("image", file);
-
+    const loadingId = toastLoading("Privacy-cleaning image...");
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/strip-metadata`, {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!response.ok) throw new Error("Failed to clean image");
-
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-
+      let finalBlob;
+      const fileMime = file.type || "image/jpeg";
+      if (fileMime === "image/jpeg" || fileMime === "image/jpg") {
+        const arrayBuffer = await file.arrayBuffer();
+        const strippedBuffer = stripJpegMetadataLossless(arrayBuffer);
+        finalBlob = new Blob([strippedBuffer], { type: fileMime });
+      } else {
+        finalBlob = await stripMetadataViaCanvas(file, fileMime, 95);
+      }
+      const url = URL.createObjectURL(finalBlob);
       const a = document.createElement("a");
       a.href = url;
-
       const baseName = file.name.replace(/\.[^.]+$/, "");
       const extension = file.name.includes(".") ? file.name.split(".").pop() : "png";
-      a.download = `${baseName}_privacy_cleaned.${extension}`;
-
+      const downloadName = `${baseName}_privacy_cleaned.${extension}`;
+      a.download = downloadName;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-
       toastDismiss(loadingId);
       toastSuccess("Image privacy-cleaned and downloaded!");
 
       if (addToHistory) {
-        const historyUrl = URL.createObjectURL(blob);
-        addToHistory(historyUrl, `${baseName}_privacy_cleaned.${extension}`);
+        const historyUrl = URL.createObjectURL(finalBlob);
+        addToHistory(historyUrl, downloadName);
       }
 
       setMetadata(null);
@@ -178,9 +204,7 @@ export default function ImageMetadata() {
 
   const extraContent = ({ file, loading, setLoading, addToHistory }) => {
     if (!metadata) return null;
-
     const keys = Object.keys(metadata);
-
     return (
       <div className="w-full mt-8 animate-in fade-in slide-in-from-top-4 duration-500 text-left">
         <div className="flex justify-between items-center mb-4">
@@ -206,30 +230,22 @@ export default function ImageMetadata() {
           <div className="mb-6 p-4 rounded-xl border bg-yellow-50 border-yellow-200">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-yellow-800">
-                <span
-                  className={`px-3 py-1 rounded-full text-xs font-bold ${
-                    securityReport.risk_level === "HIGH"
-                      ? "bg-red-100 text-red-700"
-                      : securityReport.risk_level === "MEDIUM"
-                      ? "bg-yellow-100 text-yellow-700"
-                      : "bg-green-100 text-green-700"
-                  }`}
-                >
+                <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                  securityReport.risk_level === "HIGH" ? "bg-red-100 text-red-700"
+                  : securityReport.risk_level === "MEDIUM" ? "bg-yellow-100 text-yellow-700"
+                  : "bg-green-100 text-green-700"
+                }`}>
                   Privacy Risk: {securityReport.risk_level}
                 </span>
               </h3>
               <div className="flex flex-col gap-2">
-                <span className="text-sm font-bold text-yellow-700">
-                  Score: {securityReport.risk_score}/100
-                </span>
+                <span className="text-sm font-bold text-yellow-700">Score: {securityReport.risk_score}/100</span>
                 <div className="w-40 h-2 bg-gray-200 rounded-full overflow-hidden">
                   <div
                     className={`h-full transition-all duration-500 ${
-                      securityReport.risk_level === "HIGH"
-                        ? "bg-red-500"
-                        : securityReport.risk_level === "MEDIUM"
-                        ? "bg-yellow-500"
-                        : "bg-green-500"
+                      securityReport.risk_level === "HIGH" ? "bg-red-500"
+                      : securityReport.risk_level === "MEDIUM" ? "bg-yellow-500"
+                      : "bg-green-500"
                     }`}
                     style={{ width: `${securityReport.risk_score}%` }}
                   />
@@ -240,18 +256,14 @@ export default function ImageMetadata() {
               <p className="font-medium mb-2">Sensitive Data Detected:</p>
               <ul className="list-disc ml-5 space-y-1">
                 {securityReport.sensitive_fields?.map((item, idx) => (
-                  <li key={idx}>
-                    <span className="font-semibold">{item.field}</span> — {item.description}
-                  </li>
+                  <li key={idx}><span className="font-semibold">{item.field}</span> — {item.description}</li>
                 ))}
               </ul>
             </div>
             <div className="mt-3 text-sm text-yellow-900">
               <p className="font-medium mb-2">Recommended Actions:</p>
               <ul className="list-disc ml-5 space-y-1">
-                {securityReport.recommended_actions?.map((a, i) => (
-                  <li key={i}>{a}</li>
-                ))}
+                {securityReport.recommended_actions?.map((a, i) => <li key={i}>{a}</li>)}
               </ul>
             </div>
           </div>
@@ -266,42 +278,25 @@ export default function ImageMetadata() {
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-gray-50 border-b border-gray-100">
-                    <th className="px-4 py-3 text-xs font-bold text-gray-800 uppercase tracking-wider w-1/3">
-                      Tag / Field
-                    </th>
-                    <th className="px-4 py-3 text-xs font-bold text-gray-800 uppercase tracking-wider">
-                      Value
-                    </th>
-                    <th className="px-4 py-3 text-xs font-bold text-gray-800 uppercase tracking-wider w-16 text-center">
-                      Action
-                    </th>
+                    <th className="px-4 py-3 text-xs font-bold text-gray-800 uppercase tracking-wider w-1/3">Tag / Field</th>
+                    <th className="px-4 py-3 text-xs font-bold text-gray-800 uppercase tracking-wider">Value</th>
+                    <th className="px-4 py-3 text-xs font-bold text-gray-800 uppercase tracking-wider w-16 text-center">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {keys.map((key) => {
-                    const value =
-                      typeof metadata[key] === "object"
-                        ? JSON.stringify(metadata[key])
-                        : String(metadata[key]);
+                    const value = typeof metadata[key] === "object" ? JSON.stringify(metadata[key]) : String(metadata[key]);
                     return (
                       <tr key={key} className="hover:bg-gray-50/50">
-                        <td className="px-4 py-3 text-xs font-mono text-gray-600 break-all font-semibold">
-                          {key}
-                        </td>
-                        <td className="px-4 py-3 text-xs font-mono text-gray-600 break-all max-w-xs">
-                          {value}
-                        </td>
+                        <td className="px-4 py-3 text-xs font-mono text-gray-600 break-all font-semibold">{key}</td>
+                        <td className="px-4 py-3 text-xs font-mono text-gray-600 break-all max-w-xs">{value}</td>
                         <td className="px-4 py-3 text-center">
                           <button
                             onClick={() => copyToClipboard(key, value)}
                             className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-700 hover:text-gray-600 transition-colors cursor-pointer"
                             title="Copy tag and value"
                           >
-                            {copiedKey === key ? (
-                              <Check size={14} className="text-green-500" />
-                            ) : (
-                              <Copy size={14} />
-                            )}
+                            {copiedKey === key ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
                           </button>
                         </td>
                       </tr>
